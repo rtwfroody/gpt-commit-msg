@@ -8,16 +8,14 @@ import sys
 openai.api_key = os.environ["OPENAI_API_KEY"]
 
 def gpt3_5(prompt):
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=prompt,
-        max_tokens=100,
-        n=1,
-        stop=None,
-        temperature=0.7,
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
     )
 
-    return response.choices[0].text.strip()
+    return response.choices[0]['message']['content']
 
 if __name__ == "__main__":
     prompt = """Write a git commit message for the following diff. The message
