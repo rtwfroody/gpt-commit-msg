@@ -9,9 +9,9 @@ import sys
 # Set up the OpenAI API client
 openai.api_key = os.environ["OPENAI_API_KEY"]
 
-def gpt3_5(prompt):
+def gpt(prompt, model="gpt-3.5-turbo"):
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model=model,
         messages=[
             {"role": "user", "content": prompt}
         ]
@@ -27,6 +27,8 @@ def main():
         """)
     parser.add_argument("--git", "-g", help="Use staged git changes.",
                         action="store_true")
+    parser.add_argument("--4", "-4", help="Use GPT4 (slower, costs more money)",
+                        dest='gpt4', action="store_true")
     args = parser.parse_args()
 
     prompt = """Write a git commit message for the following diff. The message
@@ -44,7 +46,10 @@ def main():
         print("Empty diff.")
         return 1
     prompt += diff
-    print(gpt3_5(prompt))
+    if args.gpt4:
+        print(gpt(prompt, model="gpt-4"))
+    else:
+        print(gpt(prompt))
 
 if __name__ == "__main__":
     sys.exit(main())
