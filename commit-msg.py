@@ -16,7 +16,7 @@ max_token_count = {
 openai.api_key = os.environ["OPENAI_API_KEY"]
 
 def gpt(prompt, model="gpt-3.5-turbo"):
-    print("prompt:", repr(prompt))
+    #print("prompt:", repr(prompt))
 
     response = openai.ChatCompletion.create(
         model=model,
@@ -25,7 +25,7 @@ def gpt(prompt, model="gpt-3.5-turbo"):
         ]
     )
 
-    print("response:", repr(response))
+    #print("response:", repr(response))
 
     return response.choices[0]['message']['content']
 
@@ -78,6 +78,7 @@ def main():
             change."""
 
     print(summarize(diff, model, prompt))
+    print(f"({model})")
 
 if __name__ == "__main__":
     sys.exit(main())
