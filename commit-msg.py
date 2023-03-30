@@ -3,10 +3,11 @@
 import argparse
 import openai
 import os
+import re
 import subprocess
 import sys
+import textwrap
 import tiktoken
-import re
 
 max_token_count = {
     "gpt-4": 8192,
@@ -142,7 +143,10 @@ def main():
     else:
         args.model = "gpt-3.5-turbo"
 
-    print(commit_message(diff))
+    message = commit_message(diff)
+    paragraphs = message.split("\n\n")
+    wrapped = "\n\n".join(textwrap.fill(p, 80) for p in paragraphs)
+    print(wrapped)
     print(f"({args.model})")
 
 if __name__ == "__main__":
