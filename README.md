@@ -24,15 +24,15 @@ The program can be run in two ways:
 
 1. Piping a diff into the script:
 ```sh
-diff -u old_file new_file | python3 gpt-commit-msg.py
+diff -u old_file new_file | python3 gpt_commit_msg.py
 ```
 2. Using the --git flag to automatically use staged git changes:
 ```sh
-python3 gpt-commit-msg.py --git
+python3 gpt_commit_msg.py --git
 ```
 By default, the script uses GPT-3.5-turbo, which is faster and costs less. To use GPT-4 instead, add the -4 flag:
 ```sh
-python3 gpt-commit-msg.py -4
+python3 gpt_commit_msg.py -4
 ```
 
 ## How It Works
@@ -56,6 +56,6 @@ history also came courtesy of this script.
 I use the following two macros in my .vimrc to easily invoke this command when
 writing a commit message.
 ```
-command! CommitMsg :r !gpt-commit-msg.py --git
-command! CommitMsg4 :r !gpt-commit-msg.py --git -4
+command! CommitMsg :r !gpt_commit_msg.py --git
+command! CommitMsg4 :r !gpt_commit_msg.py --git -4
 ```
