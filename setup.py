@@ -5,7 +5,8 @@ setup(
     version="0.1.0",
     py_modules=['gpt_commit_msg'],
     install_requires=[
-        # Add your package dependencies here
+        "openai",
+        "tiktoken"
     ],
     entry_points={
         'console_scripts': [
