@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="gpt_commit_msg",
-    version="0.1.0",
+    version="0.1.2",
     py_modules=['gpt_commit_msg'],
     install_requires=[
         "openai",
