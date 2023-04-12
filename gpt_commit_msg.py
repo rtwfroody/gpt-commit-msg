@@ -73,7 +73,7 @@ def summarize(text,
                 "\n",        # Then try newline
                 ]
                 ):
-    prompt = "Summarize the following:"
+    prompt = "Make an unordered list of every change in this diff.\n\n"
     query = prompt + text
     tcount = token_count(query)
 
@@ -144,8 +144,9 @@ def main():
         args.model = "gpt-3.5-turbo"
 
     message = commit_message(diff)
-    paragraphs = message.split("\n\n")
-    wrapped = "\n\n".join(textwrap.fill(p, 80) for p in paragraphs)
+    paragraphs = message.splitlines()
+    wrapped_paragraphs = [textwrap.wrap(p) for p in paragraphs]
+    wrapped = "\n".join("\n".join(p) for p in wrapped_paragraphs)
     print(wrapped)
     print(f"({args.model})")
 
