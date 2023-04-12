@@ -1,12 +1,13 @@
 #!/bin/env python3
 
 import argparse
-import openai
 import os
 import re
 import subprocess
 import sys
 import textwrap
+
+import openai
 import tiktoken
 
 max_token_count = {
@@ -42,8 +43,8 @@ def token_count(text):
 
 def commit_message(diff):
     prompt = """Write a git commit message for the following. The message
-            starts with a one-line summary of 60 characters, then have a
-            blank line, and then have a longer but concise description of the
+            starts with a one-line summary of 60 characters, followed by a
+            blank line, followed by a longer but concise description of the
             change."""
 
     # Simple case. No summarizing needed.
@@ -51,29 +52,29 @@ def commit_message(diff):
     if tcount <= max_token_count[args.model]:
         return gpt(prompt + diff)
 
-    result = []
     summaries = summarize(diff)
-    result.extend(summaries)
-    summary_string = "\n\n".join(summaries)
+    result = ["## More Detail"] + summaries
+    overall_summary = "\n\n".join(summaries)
     while True:
-        if token_count(prompt + summary_string) <= max_token_count[args.model]:
+        if token_count(prompt + overall_summary) <= max_token_count[args.model]:
             break
         # Summarize the summary
-        summaries = summarize(summary_string)
+        summaries = summarize(overall_summary,
+                prompt="Make an unordered list that summarizes the changes described below.n\n")
         result = summaries + ["## More Detail"] + result
-        summary_string = "\n\n".join(summaries)
-    
-    result.insert(0, gpt(prompt + summary_string))
+        overall_summary = "\n\n".join(summaries)
+
+    result.insert(0, gpt(prompt + overall_summary))
     return "\n\n".join(result)
 
 def summarize(text,
-              splitre=[
+              splitre=(
                 r"^(diff )", # First try to split by diff
                 "^$",        # Then try blank line
                 "\n",        # Then try newline
-                ]
+                ),
+                prompt="Make an unordered list of every change in this diff.\n\n"
                 ):
-    prompt = "Make an unordered list of every change in this diff.\n\n"
     query = prompt + text
     tcount = token_count(query)
 
@@ -96,18 +97,13 @@ def summarize(text,
     chunk_tcount = token_count(parts[0])
     for part in parts[1:]:
         part_tcount = token_count(part)
-        #print(f">>> {splitre[0]!r}",
-        #      chunk_tcount,
-        #      len(chunk),
-        #      part_tcount,
-        #      max_token_count[args.model])
 
         if chunk_tcount + part_tcount >= max_token_count[args.model]:
             text = "".join(chunk)
             chunk = []
             if token_count(text) > max_token_count[args.model]:
                 # Need to split using a different regex
-                summaries.extend(summarize(text, splitre=splitre[1:]))
+                summaries.extend(summarize(text, splitre=splitre[1:], prompt=prompt))
             else:
                 summaries.append(gpt(prompt + text))
             chunk_tcount = sum(token_count(c) for c in chunk)
@@ -149,6 +145,8 @@ def main():
     wrapped = "\n".join("\n".join(p) for p in wrapped_paragraphs)
     print(wrapped)
     print(f"({args.model})")
+
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main())
