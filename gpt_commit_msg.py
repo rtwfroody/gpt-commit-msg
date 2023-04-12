@@ -6,19 +6,12 @@ import subprocess
 import sys
 import textwrap
 
-import tiktoken
-
 import llmlib
 
 max_token_count = {
     "gpt-4": 8192,
     "gpt-3.5-turbo": 4097
 }
-
-def token_count(text):
-    encoding = tiktoken.encoding_for_model(args.model)
-    # tiktoken seems to be undercounting tokens compared to the API
-    return len(encoding.encode(text)) * 2
 
 def commit_message(llm, diff):
     prompt = """Write a git commit message for the following. The message
@@ -27,7 +20,7 @@ def commit_message(llm, diff):
             change."""
 
     # Simple case. No summarizing needed.
-    tcount = token_count(prompt + diff)
+    tcount = llm.get_num_tokens(prompt + diff)
     if tcount <= max_token_count[args.model]:
         return llm.ask(prompt + diff)
 
@@ -35,7 +28,7 @@ def commit_message(llm, diff):
     result = ["## More Detail"] + summaries
     overall_summary = "\n\n".join(summaries)
     while True:
-        if token_count(prompt + overall_summary) <= max_token_count[args.model]:
+        if llm.get_num_tokens(prompt + overall_summary) <= max_token_count[args.model]:
             break
         # Summarize the summary
         summaries = summarize(llm, overall_summary,
@@ -56,7 +49,7 @@ def summarize(llm,
                 prompt="Make an unordered list of the effects of every change in this diff.\n\n"
                 ):
     query = prompt + text
-    tcount = token_count(query)
+    tcount = llm.get_num_tokens(query)
 
     if tcount <= max_token_count[args.model]:
         return [llm.ask(prompt + text)]
@@ -74,19 +67,19 @@ def summarize(llm,
     parts = combined_parts
 
     chunk = [parts[0]]
-    chunk_tcount = token_count(parts[0])
+    chunk_tcount = llm.get_num_tokens(parts[0])
     for part in parts[1:]:
-        part_tcount = token_count(part)
+        part_tcount = llm.get_num_tokens(part)
 
         if chunk_tcount + part_tcount >= max_token_count[args.model]:
             text = "".join(chunk)
             chunk = []
-            if token_count(text) > max_token_count[args.model]:
+            if llm.get_num_tokens(text) > max_token_count[args.model]:
                 # Need to split using a different regex
                 summaries.extend(summarize(llm, text, splitre=splitre[1:], prompt=prompt))
             else:
                 summaries.append(llm.ask(prompt + text))
-            chunk_tcount = sum(token_count(c) for c in chunk)
+            chunk_tcount = sum(llm.get_num_tokens(c) for c in chunk)
         chunk.append(part)
         chunk_tcount += part_tcount
     return summaries
