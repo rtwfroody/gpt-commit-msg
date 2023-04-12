@@ -1,47 +1,26 @@
 #!/bin/env python3
 
 import argparse
-import os
 import re
 import subprocess
 import sys
 import textwrap
 
-import openai
 import tiktoken
+
+import llmlib
 
 max_token_count = {
     "gpt-4": 8192,
     "gpt-3.5-turbo": 4097
 }
 
-# Set up the OpenAI API client
-openai.api_key = os.environ.get("OPENAI_API_KEY")
-
-def gpt(prompt):
-    #print("prompt:", repr(prompt))
-
-    assert len(prompt) > 25
-    #response = f"{prompt[:300]!r}:{len(prompt)}"
-    #return response
-
-    response = openai.ChatCompletion.create(
-        model=args.model,
-        messages=[
-            {"role": "user", "content": prompt}
-        ]
-    )
-
-    #print("response:", repr(response))
-
-    return response.choices[0]['message']['content']
-
 def token_count(text):
     encoding = tiktoken.encoding_for_model(args.model)
     # tiktoken seems to be undercounting tokens compared to the API
     return len(encoding.encode(text)) * 2
 
-def commit_message(diff):
+def commit_message(llm, diff):
     prompt = """Write a git commit message for the following. The message
             starts with a one-line summary of 60 characters, followed by a
             blank line, followed by a longer but concise description of the
@@ -50,36 +29,37 @@ def commit_message(diff):
     # Simple case. No summarizing needed.
     tcount = token_count(prompt + diff)
     if tcount <= max_token_count[args.model]:
-        return gpt(prompt + diff)
+        return llm.ask(prompt + diff)
 
-    summaries = summarize(diff)
+    summaries = summarize(llm, diff)
     result = ["## More Detail"] + summaries
     overall_summary = "\n\n".join(summaries)
     while True:
         if token_count(prompt + overall_summary) <= max_token_count[args.model]:
             break
         # Summarize the summary
-        summaries = summarize(overall_summary,
+        summaries = summarize(llm, overall_summary,
                 prompt="Make an unordered list that summarizes the changes described below.n\n")
         result = summaries + ["## More Detail"] + result
         overall_summary = "\n\n".join(summaries)
 
-    result.insert(0, gpt(prompt + overall_summary))
+    result.insert(0, llm.ask(prompt + overall_summary))
     return "\n\n".join(result)
 
-def summarize(text,
+def summarize(llm,
+              text,
               splitre=(
                 r"^(diff )", # First try to split by diff
                 "^$",        # Then try blank line
                 "\n",        # Then try newline
                 ),
-                prompt="Make an unordered list of every change in this diff.\n\n"
+                prompt="Make an unordered list of the effects of every change in this diff.\n\n"
                 ):
     query = prompt + text
     tcount = token_count(query)
 
     if tcount <= max_token_count[args.model]:
-        return [gpt(prompt + text)]
+        return [llm.ask(prompt + text)]
 
     summaries = []
     parts = re.split(splitre[0], text, flags=re.MULTILINE)
@@ -103,9 +83,9 @@ def summarize(text,
             chunk = []
             if token_count(text) > max_token_count[args.model]:
                 # Need to split using a different regex
-                summaries.extend(summarize(text, splitre=splitre[1:], prompt=prompt))
+                summaries.extend(summarize(llm, text, splitre=splitre[1:], prompt=prompt))
             else:
-                summaries.append(gpt(prompt + text))
+                summaries.append(llm.ask(prompt + text))
             chunk_tcount = sum(token_count(c) for c in chunk)
         chunk.append(part)
         chunk_tcount += part_tcount
@@ -122,6 +102,8 @@ def main():
                         action="store_true")
     parser.add_argument("--4", "-4", help="Use GPT4 (slower, costs more money)",
                         dest='gpt4', action="store_true")
+    parser.add_argument("--verbose", "-v", help="Print verbose output",
+                        action="store_true")
     global args
     args = parser.parse_args()
 
@@ -139,12 +121,14 @@ def main():
     else:
         args.model = "gpt-3.5-turbo"
 
-    message = commit_message(diff)
+    llm = llmlib.Llm(llmlib.Openai(args.model), verbose=args.verbose)
+
+    message = commit_message(llm, diff)
     paragraphs = message.splitlines()
     wrapped_paragraphs = [textwrap.wrap(p) for p in paragraphs]
     wrapped = "\n".join("\n".join(p) for p in wrapped_paragraphs)
     print(wrapped)
-    print(f"({args.model})")
+    print(f"({llm.counter_string()})")
 
     return 0
 
