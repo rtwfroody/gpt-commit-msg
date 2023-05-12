@@ -13,12 +13,7 @@ max_token_count = {
     "gpt-3.5-turbo": 4097
 }
 
-def commit_message(llm, diff):
-    prompt = """Write a git commit message for the following. The message
-            starts with a one-line summary of 60 characters, followed by a
-            blank line, followed by a longer but concise description of the
-            change."""
-
+def commit_message(llm, diff, prompt):
     # Simple case. No summarizing needed.
     tcount = llm.get_num_tokens(prompt + diff)
     if tcount <= max_token_count[args.model]:
@@ -97,6 +92,8 @@ def main():
                         dest='gpt4', action="store_true")
     parser.add_argument("--verbose", "-v", help="Print verbose output",
                         action="store_true")
+    parser.add_argument("--prompt", "-p", help="Custom prompt to use",
+                        action="store")
     global args
     args = parser.parse_args()
 
@@ -114,9 +111,17 @@ def main():
     else:
         args.model = "gpt-3.5-turbo"
 
+    if args.prompt:
+        prompt = args.prompt
+    else:
+        prompt = """Write a git commit message for the following. The message
+                starts with a one-line summary of 60 characters, followed by a
+                blank line, followed by a longer but concise description of the
+                change."""
+
     llm = llmlib.Llm(llmlib.Openai(args.model), verbose=args.verbose)
 
-    message = commit_message(llm, diff)
+    message = commit_message(llm, diff, prompt)
     paragraphs = message.splitlines()
     wrapped_paragraphs = [textwrap.wrap(p) for p in paragraphs]
     wrapped = "\n".join("\n".join(p) for p in wrapped_paragraphs)
