@@ -93,7 +93,12 @@ def main():
     parser.add_argument("--verbose", "-v", help="Print verbose output",
                         action="store_true")
     parser.add_argument("--prompt", "-p", help="Custom prompt to use",
-                        action="store")
+                        action="store",
+                        default="""Write a git commit message for the following. The message
+                                starts with a one-line summary of 60 characters, followed by a
+                                blank line, followed by a longer but concise description of the
+                                change.""",
+                        )
     global args
     args = parser.parse_args()
 
@@ -111,17 +116,9 @@ def main():
     else:
         args.model = "gpt-3.5-turbo"
 
-    if args.prompt:
-        prompt = args.prompt
-    else:
-        prompt = """Write a git commit message for the following. The message
-                starts with a one-line summary of 60 characters, followed by a
-                blank line, followed by a longer but concise description of the
-                change."""
-
     llm = llmlib.Llm(llmlib.Openai(args.model), verbose=args.verbose)
 
-    message = commit_message(llm, diff, prompt)
+    message = commit_message(llm, diff, args.prompt)
     paragraphs = message.splitlines()
     wrapped_paragraphs = [textwrap.wrap(p) for p in paragraphs]
     wrapped = "\n".join("\n".join(p) for p in wrapped_paragraphs)
