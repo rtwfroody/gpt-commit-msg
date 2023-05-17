@@ -92,13 +92,13 @@ def main():
                         dest='gpt4', action="store_true")
     parser.add_argument("--verbose", "-v", help="Print verbose output",
                         action="store_true")
-    parser.add_argument("--prompt", "-p", help="Custom prompt to use",
-                        action="store",
-                        default="""Write a git commit message for the following. The message
-                                starts with a one-line summary of 60 characters, followed by a
-                                blank line, followed by a longer but concise description of the
-                                change.""",
-                        )
+    parser.add_argument("--prompt", "-p", help="Custom prompt to use", action="store",
+                        default=re.sub(r"\s+", " ",
+                            """Write a git commit message for the following. The message
+                            starts with a one-line summary of 60 characters, followed by a
+                            blank line, followed by a longer but concise description of the
+                            change.""") + "\n\n"
+                       )
     global args
     args = parser.parse_args()
 
